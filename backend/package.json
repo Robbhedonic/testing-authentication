@@ -6,6 +6,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
   },
@@ -19,7 +22,12 @@
     "firebase-admin": "^13.10.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitest/coverage-v8": "^4.1.6",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
     "supertest": "^7.2.2",
     "vitest": "^4.1.6"
   }
