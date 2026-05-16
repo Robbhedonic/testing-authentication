@@ -24,13 +24,26 @@ npm install
 ```
 
 ### Configure environment variables
-Copy the example file and fill in your values:
+
+**Backend**:
 ```bash
 cp backend/.env.example backend/.env
+```
+
+**Frontend**:
+```bash
 cp frontend/.env.example frontend/.env
 ```
 
-See `.env.example` files for the required variables.
+Get Firebase config from Firebase Console:
+1. Go to Project Settings (gear icon) > Web app
+2. Copy the config object
+3. Paste values into `.env`
+
+Then enable Google sign-in:
+1. Go to Authentication > Sign-in method
+2. Enable **Google** provider
+3. In Authorized domains, add `localhost` (for local dev)
 
 ### Run the project locally
 ```bash
@@ -67,16 +80,18 @@ _Add screenshot of passing GitHub Actions pipeline here_
 
 ## Authentication
 
-**Provider chosen: Firebase**
+**Provider chosen: Firebase with Google sign-in**
 
-We chose Firebase because it provides token-based authentication that integrates cleanly with a REST API. The client authenticates directly with Firebase and receives a JWT (ID token). This token is sent in the `Authorization: Bearer <token>` header on every protected request.
+We chose Firebase because it provides token-based authentication that integrates cleanly with a REST API. The client authenticates via Google OAuth, receives a JWT (ID token), and sends it in the `Authorization: Bearer <token>` header on protected requests.
 
 ### How it works
-1. The user logs in via the frontend using Firebase Auth
-2. Firebase returns an ID token
-3. The frontend sends the token in the `Authorization` header
-4. The backend `verifyToken` middleware calls `firebase-admin` to verify the token
-5. If valid, the request proceeds; otherwise a `401 Unauthorized` is returned
+1. User clicks "Login with Google" on the frontend
+2. Firebase handles OAuth flow with Google
+3. Firebase returns an ID token (JWT)
+4. Frontend stores token in memory (not localStorage)
+5. On API calls to protected routes, frontend sends: `Authorization: Bearer <token>`
+6. Backend `verifyToken` middleware verifies token with `firebase-admin`
+7. If valid, `req.user` is set; otherwise returns `401 Unauthorized`
 
 ---
 
