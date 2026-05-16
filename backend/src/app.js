@@ -1,3 +1,5 @@
+import 'dotenv/config';
+import './firebase.js';
 import express from 'express';
 import cors from 'cors';
 import gymsRouter from './routes/gyms.js';

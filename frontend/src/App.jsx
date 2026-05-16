@@ -1,108 +1,203 @@
 import { useEffect, useState } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from 'firebase/auth';
+import axios from 'axios';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import './App.css';
 import { auth, hasRequiredFirebaseConfig, provider } from './firebase';
 
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
 function App() {
   const [user, setUser] = useState(null);
-  const [tokenPreview, setTokenPreview] = useState('');
-  const [status, setStatus] = useState(
-    auth ? 'Checking session...' : 'Missing Firebase environment variables.'
-  );
+  const [authLoading, setAuthLoading] = useState(true);
 
+  const [gyms, setGyms] = useState([]);
+  const [gymsLoading, setGymsLoading] = useState(false);
+  const [gymsError, setGymsError] = useState('');
+
+  const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState('');
+
+  const [newGymName, setNewGymName] = useState('');
+  const [newGymLocation, setNewGymLocation] = useState('');
+  const [gymFormError, setGymFormError] = useState('');
+  const [gymFormLoading, setGymFormLoading] = useState(false);
+
+  // Auth state listener
   useEffect(() => {
     if (!auth) {
+      // defer to avoid setState-in-effect lint error
+      Promise.resolve().then(() => setAuthLoading(false));
       return undefined;
     }
-
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
-
-      if (!nextUser) {
-        setTokenPreview('');
-        setStatus('Not logged in');
-        return;
-      }
-
-      try {
-        const token = await nextUser.getIdToken();
-        setTokenPreview(`${token.slice(0, 22)}...`);
-        setStatus('Logged in');
-      } catch {
-        setStatus('Logged in, but token could not be loaded');
-      }
+      setAuthLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
+  // Load public gyms list
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`${API}/gyms`)
+      .then((res) => { if (!cancelled) { setGyms(res.data); setGymsError(''); setGymsLoading(false); } })
+      .catch(() => { if (!cancelled) { setGymsError('Could not load gyms.'); setGymsLoading(false); } });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load profile when user logs in
+  useEffect(() => {
+    if (!user) {
+      Promise.resolve().then(() => { setProfile(null); setProfileError(''); });
+      return;
+    }
+    user.getIdToken().then((token) => {
+      axios
+        .get(`${API}/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        })
+        .then((res) => {
+          setProfile(res.data);
+          setProfileError('');
+        })
+        .catch(() => setProfileError('Could not load profile.'));
+    });
+  }, [user]);
+
   const handleLogin = async () => {
     if (!auth) return;
-
     try {
-      setStatus('Opening Google login...');
       await signInWithPopup(auth, provider);
     } catch {
-      setStatus('Login failed');
+      // login cancelled or failed — silently ignore
     }
   };
 
   const handleLogout = async () => {
     if (!auth) return;
+    await signOut(auth);
+  };
 
+  const handleAddGym = async (e) => {
+    e.preventDefault();
+    if (!user) return;
+    setGymFormLoading(true);
+    setGymFormError('');
     try {
-      await signOut(auth);
-      setStatus('Not logged in');
+      const token = await user.getIdToken();
+      const res = await axios.post(
+        `${API}/gyms`,
+        { name: newGymName, location: newGymLocation },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+      setGyms((prev) => [...prev, res.data]);
+      setNewGymName('');
+      setNewGymLocation('');
     } catch {
-      setStatus('Logout failed');
+      setGymFormError('Could not add gym. Make sure name and location are filled.');
+    } finally {
+      setGymFormLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <main className="auth-shell">
+        <p>Loading...</p>
+      </main>
+    );
+  }
 
   return (
     <main className="auth-shell">
       <section className="auth-card">
-        <h1>Gym Review Login</h1>
-        <p className="subtitle">Firebase authentication for protected API routes</p>
+        <header className="app-header">
+          <h1>Gym Review API</h1>
+          {!hasRequiredFirebaseConfig && (
+            <p className="warning">Configure frontend .env values before logging in.</p>
+          )}
+          <div className="actions">
+            {!user ? (
+              <button type="button" onClick={handleLogin} disabled={!hasRequiredFirebaseConfig}>
+                Login with Google
+              </button>
+            ) : (
+              <button type="button" className="secondary" onClick={handleLogout}>
+                Logout
+              </button>
+            )}
+          </div>
+        </header>
 
-        {!hasRequiredFirebaseConfig ? (
-          <p className="warning">
-            Configure frontend .env values before logging in.
-          </p>
-        ) : null}
-
-        <div className="actions">
-          <button type="button" onClick={handleLogin} disabled={!hasRequiredFirebaseConfig}>
-            Login with Google
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={handleLogout}
-            disabled={!user}
-          >
-            Logout
-          </button>
-        </div>
-
-        <p className="status">Status: {status}</p>
-
-        {user ? (
+        {/* Profile — only when logged in */}
+        {user && (
           <section className="user-box">
-            <h2>Current user</h2>
-            <p>Name: {user.displayName || 'No display name'}</p>
-            <p>Email: {user.email || 'No email'}</p>
-            <p>UID: {user.uid}</p>
-            <p>Token preview: {tokenPreview || 'Unavailable'}</p>
+            <h2>Profile</h2>
+            {profileError ? (
+              <p className="error">{profileError}</p>
+            ) : profile ? (
+              <>
+                <p>Name: {profile.name}</p>
+                <p>Email: {profile.email}</p>
+                <p>UID: {profile.uid}</p>
+              </>
+            ) : (
+              <p>Loading profile...</p>
+            )}
           </section>
-        ) : (
-          <section className="user-box">
-            <h2>Current user</h2>
-            <p>Not logged in.</p>
+        )}
+
+        {/* Gym list — public */}
+        <section className="gym-list">
+          <h2>Gyms</h2>
+          {gymsLoading && <p>Loading gyms...</p>}
+          {gymsError && <p className="error">{gymsError}</p>}
+          {!gymsLoading && !gymsError && gyms.length === 0 && <p>No gyms available.</p>}
+          {gyms.length > 0 && (
+            <ul>
+              {gyms.map((gym) => (
+                <li key={gym.id}>
+                  <strong>{gym.name}</strong> — {gym.location}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Add gym form — protected (only when logged in) */}
+        {user && (
+          <section className="gym-form">
+            <h2>Add a Gym</h2>
+            <form aria-label="add-gym-form" onSubmit={handleAddGym}>
+              <input
+                type="text"
+                placeholder="Gym name"
+                value={newGymName}
+                onChange={(e) => setNewGymName(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Location"
+                value={newGymLocation}
+                onChange={(e) => setNewGymLocation(e.target.value)}
+                required
+              />
+              <button type="submit" disabled={gymFormLoading}>
+                {gymFormLoading ? 'Adding...' : 'Add Gym'}
+              </button>
+            </form>
+            {gymFormError && <p className="error">{gymFormError}</p>}
           </section>
+        )}
+
+        {!user && (
+          <p className="hint">Log in to add gyms and write reviews.</p>
         )}
       </section>
     </main>

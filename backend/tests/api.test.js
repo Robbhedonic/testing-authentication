@@ -7,9 +7,14 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock('firebase-admin', () => ({
   default: {
+    apps: [{}],
     auth: () => ({
       verifyIdToken: hoisted.verifyIdTokenMock,
     }),
+    credential: {
+      cert: vi.fn(),
+    },
+    initializeApp: vi.fn(),
   },
 }));
 
