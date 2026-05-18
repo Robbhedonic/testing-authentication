@@ -6,10 +6,11 @@ import gymsRouter from './routes/gyms.js';
 import profileRouter from './routes/profile.js';
 
 const app = express();
+const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: frontendOrigin,
   credentials: true,
 }));
 

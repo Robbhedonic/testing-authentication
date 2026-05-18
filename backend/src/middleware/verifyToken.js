@@ -30,9 +30,8 @@ const verifyToken = async (req, res, next) => {
   }
 
   if (!isFirebaseAdminReady()) {
-    return res.status(500).json({
-      error: 'Auth service is not configured on the server',
-    });
+    console.error('[auth] Auth service is not configured on the server');
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   try {

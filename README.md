@@ -72,9 +72,9 @@ npm test
 ```
 
 ### Screenshots
-_Add screenshot of passing local tests here_
-
-_Add screenshot of passing GitHub Actions pipeline here_
+![Backend tests passing](docs/screenshots/local-tests-backend.jpeg)
+![Frontend tests passing](docs/screenshots/local-tests-frontend.jpeg)
+![GitHub Actions passing](docs/screenshots/github-actions-pipeline.jpeg)
 
 ---
 
@@ -104,13 +104,24 @@ All API keys and credentials are stored in `.env` files which are listed in `.gi
 Unauthenticated requests to `POST /gyms`, `POST /gyms/:id/reviews`, and `GET /profile` return `401 Unauthorized`. This is verified by dedicated integration tests.
 
 ### CORS restricted to a specific origin
-CORS is configured to only allow `http://localhost:5173` (the Vite dev server). A wildcard `*` is not used because that would allow any origin to make authenticated requests to the API.
+CORS is configured to only allow the configured frontend origin (`FRONTEND_ORIGIN`, default `http://localhost:5173`). A wildcard `*` is not used because that would allow any origin to make authenticated requests to the API.
 
 ### Tokens not stored in localStorage
 Firebase tokens are kept in memory and not stored in `localStorage`. `localStorage` is accessible by JavaScript from any script on the page, making it vulnerable to XSS attacks.
 
 ### `withCredentials: true` on authenticated requests
 All authenticated frontend requests use `withCredentials: true` so cookies and credentials are sent correctly with cross-origin requests.
+
+### CI secrets in GitHub Actions
+The workflow reads sensitive backend values from GitHub Secrets (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FRONTEND_ORIGIN`) rather than hardcoding values in workflow files.
+
+### Security checklist status
+- [x] No secrets or API keys committed to the repository
+- [x] Sensitive values in `.env` and variables documented in `.env.example`
+- [x] Protected routes return `401 Unauthorized` when unauthenticated
+- [x] CORS restricted to frontend origin (no wildcard)
+- [x] Tokens not stored in `localStorage`
+- [x] Authenticated frontend requests send `withCredentials: true`
 
 ---
 

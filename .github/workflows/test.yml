@@ -32,6 +32,11 @@ jobs:
       - name: Run backend tests
         working-directory: ./backend
         run: npm test
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
 
       - name: Install frontend dependencies
         working-directory: ./frontend
